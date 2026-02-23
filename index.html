@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sorteggio Interrogazioni</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+            color: #1e293b;
+        }
+
+        .app-container {
+            background: var(--card);
+            width: 100%;
+            max-width: 450px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #0f172a;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--secondary);
+            margin-bottom: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--secondary);
+            text-transform: uppercase;
+        }
+
+        .main-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+            transition: transform 0.1s;
+        }
+
+        .main-button:active {
+            transform: scale(0.97);
+        }
+
+        #result-area {
+            margin: 24px 0;
+            min-height: 120px;
+            padding: 16px;
+            background: #f0f7ff;
+            border: 2px dashed #bfdbfe;
+            border-radius: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            gap: 8px;
+        }
+
+        .student-pill {
+            background: white;
+            padding: 10px 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-weight: 600;
+            border: 1px solid #dbeafe;
+            animation: popIn 0.3s ease-out forwards;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .history-section {
+            margin-top: 24px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+        }
+
+        .history-title {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        #history-list {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #64748b;
+        }
+
+        .reset-btn {
+            margin-top: 32px;
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--danger);
+            font-size: 0.8rem;
+            text-decoration: underline;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <h1>🎯 Sorteggio 4</h1>
+    <p class="subtitle">Estrai nomi senza ripetizioni</p>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-value" id="count-remaining">-</span>
+            <span class="stat-label">Rimanenti</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" id="count-done">-</span>
+            <span class="stat-label">Interrogati</span>
+        </div>
+    </div>
+
+    <button class="main-button" onclick="shuffleAndPick()">ESTRAI 4 NOMI</button>
+
+    <div id="result-area">
+        <span style="color: #94a3b8;">Clicca il tasto per estrarre i nomi della settimana</span>
+    </div>
+
+    <div class="history-section">
+        <div class="history-title">Cronologia ciclo attuale:</div>
+        <div id="history-list">Nessuno ancora estratto</div>
+    </div>
+
+    <button class="reset-btn" onclick="confirmReset()">Resetta tutto il ciclo (22 nomi)</button>
+</div>
+
+<script>
+    const CLASSE_ORIGINALE = [
+        "Emma B.", "Giona", "Giuliano", "Aaron", "Samuele", "Massimiliano", 
+        "Alice E.", "Marco", "Giovanni", "Kristel", "Kristian", "Emma M.", 
+        "Andrea", "Ester", "Francesco", "Chantal", "Elisa", "Alice D.", 
+        "Ameliè", "Hanine", "Gaia", "Mirko"
+    ];
+
+    let rimanenti = JSON.parse(localStorage.getItem('rimanenti_app')) || [...CLASSE_ORIGINALE];
+    let interrogati = JSON.parse(localStorage.getItem('interrogati_app')) || [];
+
+    function updateUI() {
+        document.getElementById('count-remaining').innerText = rimanenti.length;
+        document.getElementById('count-done').innerText = interrogati.length;
+        
+        const historyDiv = document.getElementById('history-list');
+        historyDiv.innerText = interrogati.length > 0 ? interrogati.join(", ") : "Nessuno ancora estratto";
+        
+        localStorage.setItem('rimanenti_app', JSON.stringify(rimanenti));
+        localStorage.setItem('interrogati_app', JSON.stringify(interrogati));
+    }
+
+    function shuffleAndPick() {
+        const display = document.getElementById('result-area');
+        
+        if (rimanenti.length === 0) {
+            alert("Tutti gli studenti sono stati estratti! Il ciclo ricomincerà da capo.");
+            resetCycle();
+            return;
+        }
+
+        let estrattiOggi = [];
+        let daEstrarre = Math.min(4, rimanenti.length);
+
+        for (let i = 0; i < daEstrarre; i++) {
+            const randomIndex = Math.floor(Math.random() * rimanenti.length);
+            const nome = rimanenti.splice(randomIndex, 1)[0];
+            estrattiOggi.push(nome);
+            interrogati.push(nome);
+        }
+
+        display.innerHTML = "";
+        estrattiOggi.forEach(nome => {
+            const pill = document.createElement('span');
+            pill.className = 'student-pill';
+            pill.innerText = "✅ " + nome;
+            display.appendChild(pill);
+        });
+
+        updateUI();
+    }
+
+    function resetCycle() {
+        rimanenti = [...CLASSE_ORIGINALE];
+        interrogati = [];
+        document.getElementById('result-area').innerHTML = '<span style="color: #94a3b8;">Ciclo resettato!</span>';
+        updateUI();
+    }
+
+    function confirmReset() {
+        if (confirm("Vuoi azzerare tutto e ricominciare con i 22 nomi?")) {
+            resetCycle();
+        }
+    }
+
+    // Inizializzazione
+    updateUI();
+</script>
+
+</body>
+</html>
